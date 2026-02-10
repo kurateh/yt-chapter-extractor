@@ -101,7 +101,8 @@ class DownloadScreen(Screen[bool]):
         from textual.worker import get_current_worker
 
         worker = get_current_worker()
-        output_dir = Path.cwd()
+        output_dir = Path.cwd() / "output"
+        output_dir.mkdir(exist_ok=True)
 
         self.app.call_from_thread(self._log, "Downloading audio from YouTube...")
         self.app.call_from_thread(
