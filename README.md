@@ -36,7 +36,7 @@ uv run yt-chapter-extractor
 
 On launch, select a mode:
 
-- **YouTube MP3 Extraction** - Enter a YouTube URL. If the video has chapters, select which ones to extract; otherwise, the full video is treated as a single track. Edit metadata and download as MP3 files (saved to `./output/`).
+- **YouTube MP3 Extraction** - Enter a YouTube URL. If the video has chapters, select which ones to extract; otherwise, the full video is treated as a single track. Edit metadata, optionally enable loudness normalization (target LUFS), and download as MP3 files (saved to `./output/`).
 - **Audio Decibel Normalization** - Enter a directory path, review loudness levels, set a target LUFS (default: -19.0), and normalize all MP3 files in-place.
 
 ## Tech Stack

@@ -8,7 +8,7 @@ from textual.containers import Vertical, VerticalScroll
 from textual.screen import Screen
 from textual.widgets import Button, Footer, Header, Label, ProgressBar, Static
 
-from ..audio import process_track
+from ..audio import normalize_audio, process_track
 from ..models import TrackInfo
 from ..youtube import download_audio
 
@@ -64,10 +64,16 @@ class DownloadScreen(Screen[bool]):
     }
     """
 
-    def __init__(self, url: str, tracks: list[TrackInfo]) -> None:
+    def __init__(
+        self,
+        url: str,
+        tracks: list[TrackInfo],
+        target_lufs: float | None = None,
+    ) -> None:
         super().__init__()
         self._url = url
         self._tracks = tracks
+        self._target_lufs = target_lufs
 
     def compose(self) -> ComposeResult:
         yield Header()
@@ -157,6 +163,22 @@ class DownloadScreen(Screen[bool]):
                             f"  Saved: {result_path.name}",
                             "log-success",
                         )
+
+                        if self._target_lufs is not None:
+                            self.app.call_from_thread(
+                                self._update_current,
+                                f"Normalizing: {track.filename} ({i + 1}/{len(self._tracks)})",
+                            )
+                            self.app.call_from_thread(
+                                self._log,
+                                f"  Normalizing to {self._target_lufs:.1f} LUFS...",
+                            )
+                            normalize_audio(result_path, self._target_lufs)
+                            self.app.call_from_thread(
+                                self._log,
+                                f"  Normalized: {result_path.name}",
+                                "log-success",
+                            )
                     except Exception as e:
                         self.app.call_from_thread(
                             self._log,

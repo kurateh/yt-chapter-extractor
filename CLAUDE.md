@@ -27,12 +27,12 @@ The app uses a mode-branching screen flow orchestrated by `app.py:_run_flow()` v
 ```
 ModeSelectScreen -> (branch)
   "youtube"   -> UrlInputScreen -> (branch on chapters)
-      has chapters -> ChapterSelectScreen -> MetadataEditScreen -> DownloadScreen
-      no chapters  -> MetadataEditScreen -> DownloadScreen (single track)
+      has chapters -> ChapterSelectScreen -> MetadataEditScreen -> NormSettingsScreen -> DownloadScreen
+      no chapters  -> MetadataEditScreen -> NormSettingsScreen -> DownloadScreen (single track)
   "normalize" -> DirInputScreen -> NormFileListScreen -> NormProgressScreen
 ```
 
-Back navigation: each screen dismisses with `None` to go back. After completing either flow, the user returns to mode selection. Videos without chapters are treated as a single track spanning the full duration.
+Back navigation: each screen dismisses with `None` to go back. After completing either flow, the user returns to mode selection. Videos without chapters are treated as a single track spanning the full duration. `NormSettingsScreen` optionally enables loudness normalization (target LUFS) — when enabled, `DownloadScreen` runs `normalize_audio()` on each track immediately after extraction within the same worker thread.
 
 ### Layer separation
 

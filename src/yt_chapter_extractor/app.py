@@ -9,6 +9,7 @@ from .screens.download import DownloadScreen
 from .screens.metadata_edit import MetadataEditScreen
 from .screens.mode_select import ModeSelectScreen
 from .screens.norm_file_list import NormFileListScreen
+from .screens.norm_settings import NormSettingsScreen
 from .screens.norm_progress import NormProgressScreen
 from .screens.url_input import UrlInputScreen
 from .theme import CATPPUCCIN_MACCHIATO
@@ -77,8 +78,17 @@ class ChapterExtractorApp(App):
             if not tracks:
                 continue
 
+            norm_result = await self.push_screen_wait(NormSettingsScreen())
+            if norm_result is None:
+                continue
+
+            enabled, target_lufs = norm_result
             url = f"https://www.youtube.com/watch?v={video_info.video_id}"
-            await self.push_screen_wait(DownloadScreen(url, tracks))
+            await self.push_screen_wait(
+                DownloadScreen(
+                    url, tracks, target_lufs=target_lufs if enabled else None
+                )
+            )
             return
 
     async def _run_single_track_flow(self, video_info) -> None:
@@ -88,14 +98,26 @@ class ChapterExtractorApp(App):
             start_time=0.0,
             end_time=video_info.duration,
         )
-        tracks = await self.push_screen_wait(
-            MetadataEditScreen((full_chapter,))
-        )
-        if not tracks:
-            return
 
-        url = f"https://www.youtube.com/watch?v={video_info.video_id}"
-        await self.push_screen_wait(DownloadScreen(url, tracks))
+        while True:
+            tracks = await self.push_screen_wait(
+                MetadataEditScreen((full_chapter,))
+            )
+            if not tracks:
+                return
+
+            norm_result = await self.push_screen_wait(NormSettingsScreen())
+            if norm_result is None:
+                continue
+
+            enabled, target_lufs = norm_result
+            url = f"https://www.youtube.com/watch?v={video_info.video_id}"
+            await self.push_screen_wait(
+                DownloadScreen(
+                    url, tracks, target_lufs=target_lufs if enabled else None
+                )
+            )
+            return
 
     async def _run_normalize_flow(self) -> None:
         while True:
