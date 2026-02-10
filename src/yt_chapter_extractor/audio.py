@@ -1,5 +1,9 @@
+import json
+import os
+import re
 import shutil
 import subprocess
+import tempfile
 from pathlib import Path
 
 from mutagen.id3 import ID3, TIT2, TPE1, TALB
@@ -81,3 +85,75 @@ def process_track(
     set_metadata(output_path, track)
 
     return output_path
+
+
+_LOUDNORM_JSON_PATTERN = re.compile(
+    r"\{[^{}]*\"input_i\"[^{}]*\}", re.DOTALL
+)
+
+
+def measure_loudness(mp3_path: Path) -> float:
+    cmd = [
+        "ffmpeg",
+        "-i", str(mp3_path),
+        "-af", "loudnorm=print_format=json",
+        "-f", "null",
+        "-",
+    ]
+
+    result = subprocess.run(
+        cmd,
+        capture_output=True,
+        text=True,
+        timeout=120,
+    )
+
+    # loudnorm always outputs to stderr even on success, so check for JSON first
+    match = _LOUDNORM_JSON_PATTERN.search(result.stderr)
+    if not match:
+        raise RuntimeError(
+            f"ffmpeg loudness measurement failed for {mp3_path.name}: {result.stderr[:200]}"
+        )
+
+    try:
+        data = json.loads(match.group())
+        return float(data["input_i"])
+    except (json.JSONDecodeError, KeyError, ValueError) as e:
+        raise RuntimeError(
+            f"Failed to parse loudness data for {mp3_path.name}: {e}"
+        ) from e
+
+
+def normalize_audio(mp3_path: Path, target_lufs: float) -> Path:
+    dir_path = mp3_path.parent
+    fd, tmp_path_str = tempfile.mkstemp(suffix=".mp3", dir=dir_path)
+    os.close(fd)
+    tmp_path = Path(tmp_path_str)
+
+    try:
+        cmd = [
+            "ffmpeg",
+            "-y",
+            "-i", str(mp3_path),
+            "-af", f"loudnorm=I={target_lufs}:LRA=11:TP=-1.5",
+            "-codec:a", "libmp3lame",
+            "-q:a", "2",
+            str(tmp_path),
+        ]
+
+        result = subprocess.run(
+            cmd,
+            capture_output=True,
+            text=True,
+            timeout=300,
+        )
+
+        if result.returncode != 0:
+            raise RuntimeError(f"ffmpeg failed: {result.stderr}")
+
+        os.replace(tmp_path, mp3_path)
+        return mp3_path
+    except Exception:
+        if tmp_path.exists():
+            tmp_path.unlink()
+        raise

@@ -1,4 +1,5 @@
 from dataclasses import dataclass, field
+from pathlib import Path
 
 
 @dataclass(frozen=True)
@@ -64,3 +65,31 @@ class VideoInfo:
     title: str
     duration: float
     chapters: tuple[Chapter, ...] = field(default_factory=tuple)
+
+
+@dataclass(frozen=True)
+class Mp3FileInfo:
+    path: Path
+    filename: str
+    size_bytes: int
+    loudness_lufs: float | None = None
+
+    @property
+    def loudness_display(self) -> str:
+        if self.loudness_lufs is None:
+            return "N/A"
+        return f"{self.loudness_lufs:.1f} LUFS"
+
+    @property
+    def size_display(self) -> str:
+        if self.size_bytes >= 1024 * 1024:
+            return f"{self.size_bytes / (1024 * 1024):.1f} MB"
+        return f"{self.size_bytes / 1024:.1f} KB"
+
+    def with_loudness(self, loudness_lufs: float) -> "Mp3FileInfo":
+        return Mp3FileInfo(
+            path=self.path,
+            filename=self.filename,
+            size_bytes=self.size_bytes,
+            loudness_lufs=loudness_lufs,
+        )

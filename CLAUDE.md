@@ -4,7 +4,11 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-A Python TUI application that extracts individual chapters from a YouTube video as separate MP3 files with ID3 metadata. Built with Textual (TUI), yt-dlp (YouTube), mutagen (MP3 tags), and ffmpeg (audio splitting).
+A Python TUI application with two modes:
+1. **YouTube Chapter Extraction** - Extract individual chapters from a YouTube video as separate MP3 files with ID3 metadata.
+2. **Audio Loudness Normalization** - Normalize loudness (LUFS) of MP3 files in a directory using ffmpeg's `loudnorm` filter (EBU R128).
+
+Built with Textual (TUI), yt-dlp (YouTube), mutagen (MP3 tags), and ffmpeg (audio processing).
 
 ## Commands
 
@@ -18,23 +22,28 @@ uv run yt-chapter-extractor                # Run via script entry point
 
 ## Architecture
 
-The app uses a linear screen flow orchestrated by `app.py:_run_flow()` via Textual's `push_screen_wait`:
+The app uses a mode-branching screen flow orchestrated by `app.py:_run_flow()` via Textual's `push_screen_wait`:
 
 ```
-UrlInputScreen -> ChapterSelectScreen -> MetadataEditScreen -> DownloadScreen
+ModeSelectScreen -> (branch)
+  "youtube"   -> UrlInputScreen -> ChapterSelectScreen -> MetadataEditScreen -> DownloadScreen
+  "normalize" -> DirInputScreen -> NormFileListScreen -> NormProgressScreen
 ```
 
-Back navigation: MetadataEdit goes back to ChapterSelect; ChapterSelect goes back to UrlInput.
+Back navigation: each screen dismisses with `None` to go back. After completing either flow, the user returns to mode selection.
 
 ### Layer separation
 
-- **models.py** - Immutable frozen dataclasses (`Chapter`, `TrackInfo`, `VideoInfo`). All use `frozen=True` with copy-on-write methods (`with_filename`, `with_metadata`).
-- **youtube.py** - yt-dlp wrapper. `extract_video_info()` fetches chapters; `download_audio()` downloads full audio in native format (no MP3 conversion) with progress callback.
-- **audio.py** - ffmpeg extracts chapters from local file (`-ss` before `-i` for fast seeking) + converts to MP3 + mutagen for ID3 tags.
-- **screens/** - Four Textual Screen subclasses, each dismissing with a typed result that the next screen consumes.
+- **models.py** - Immutable frozen dataclasses (`Chapter`, `TrackInfo`, `VideoInfo`, `Mp3FileInfo`). All use `frozen=True` with copy-on-write methods (`with_filename`, `with_metadata`, `with_loudness`).
+- **youtube.py** - yt-dlp wrapper. `extract_video_info()` fetches chapters; `download_audio()` downloads full audio in native format with progress callback.
+- **audio.py** - ffmpeg operations: chapter extraction, MP3 conversion, ID3 tags (mutagen), loudness measurement (`measure_loudness`), and normalization (`normalize_audio`). Normalization writes to a temp file then does atomic `os.replace()`.
+- **screens/** - Textual Screen subclasses, each dismissing with a typed result that the next screen consumes.
+- **theme.py** - Catppuccin Macchiato theme definition.
 
 ### Textual patterns used
 
-- Thread workers (`@work(thread=True)`) for blocking I/O (yt-dlp, ffmpeg) in `url_input.py` and `download.py`
+- Thread workers (`@work(thread=True)`) for blocking I/O (yt-dlp, ffmpeg)
 - `self.app.call_from_thread()` to update UI from worker threads (NOT `self.call_from_thread` -- Screen doesn't have this method)
 - `push_screen_wait()` in an async `@work` coroutine for sequential screen flow with return values
+- `DataTable.add_columns()` returns `ColumnKey` tuple -- store and reuse for `update_cell()` (do NOT index `table.columns` with integers, it's a dict)
+- `ThreadPoolExecutor` with `as_completed` for parallel ffmpeg operations in loudness measurement and normalization

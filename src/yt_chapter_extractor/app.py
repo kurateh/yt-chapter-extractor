@@ -3,14 +3,18 @@ from textual.app import App
 
 from .audio import check_ffmpeg
 from .screens.chapter_select import ChapterSelectScreen
+from .screens.dir_input import DirInputScreen
 from .screens.download import DownloadScreen
 from .screens.metadata_edit import MetadataEditScreen
+from .screens.mode_select import ModeSelectScreen
+from .screens.norm_file_list import NormFileListScreen
+from .screens.norm_progress import NormProgressScreen
 from .screens.url_input import UrlInputScreen
 from .theme import CATPPUCCIN_MACCHIATO
 
 
 class ChapterExtractorApp(App):
-    TITLE = "YouTube Chapter Extractor"
+    TITLE = "Audio Tools"
 
     CSS = """
     Screen {
@@ -36,9 +40,20 @@ class ChapterExtractorApp(App):
     @work
     async def _run_flow(self) -> None:
         while True:
+            mode = await self.push_screen_wait(ModeSelectScreen())
+            if mode is None:
+                self.exit()
+                return
+
+            if mode == "youtube":
+                await self._run_youtube_flow()
+            elif mode == "normalize":
+                await self._run_normalize_flow()
+
+    async def _run_youtube_flow(self) -> None:
+        while True:
             video_info = await self.push_screen_wait(UrlInputScreen())
             if video_info is None:
-                self.exit()
                 return
 
             while True:
@@ -56,5 +71,22 @@ class ChapterExtractorApp(App):
 
                 url = f"https://www.youtube.com/watch?v={video_info.video_id}"
                 await self.push_screen_wait(DownloadScreen(url, tracks))
-                self.exit()
                 return
+
+    async def _run_normalize_flow(self) -> None:
+        while True:
+            dir_path = await self.push_screen_wait(DirInputScreen())
+            if dir_path is None:
+                return
+
+            result = await self.push_screen_wait(
+                NormFileListScreen(dir_path)
+            )
+            if result is None:
+                continue
+
+            files, target_lufs = result
+            await self.push_screen_wait(
+                NormProgressScreen(files, target_lufs)
+            )
+            return
