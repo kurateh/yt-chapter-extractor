@@ -39,7 +39,7 @@ class UrlInputScreen(Screen[VideoInfo | None]):
     }
 
     #error-label {
-        color: red;
+        color: $error;
         text-align: center;
         margin-top: 1;
     }

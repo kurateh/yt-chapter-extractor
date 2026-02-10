@@ -1,0 +1,30 @@
+from textual.theme import Theme
+
+CATPPUCCIN_MACCHIATO = Theme(
+    name="catppuccin-macchiato",
+    primary="#c6a0f6",
+    secondary="#b7bdf8",
+    accent="#f5a97f",
+    foreground="#cad3f5",
+    background="#24273a",
+    surface="#24273a",
+    panel="#24273a",
+    success="#a6da95",
+    warning="#eed49f",
+    error="#ed8796",
+    dark=True,
+    variables={
+        "block-cursor-text-style": "none",
+        "block-cursor-foreground": "#24273a",
+        "block-cursor-background": "#cad3f5",
+        "footer-key-foreground": "#c6a0f6",
+        "footer-description-foreground": "#b8c0e0",
+        "input-cursor-foreground": "#cad3f5",
+        "input-selection-background": "#c6a0f6 35%",
+        "border": "#494d64",
+        "border-blurred": "#363a4f",
+        "scrollbar-color": "#5b6078",
+        "scrollbar-color-hover": "#6e738d",
+        "scrollbar-background": "#24273a",
+    },
+)

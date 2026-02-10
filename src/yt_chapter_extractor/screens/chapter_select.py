@@ -47,7 +47,7 @@ class ChapterSelectScreen(Screen[list[Chapter]]):
     }
 
     #error-label {
-        color: red;
+        color: $error;
         text-align: center;
     }
     """

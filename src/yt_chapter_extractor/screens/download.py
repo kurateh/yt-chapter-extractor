@@ -42,11 +42,11 @@ class DownloadScreen(Screen[bool]):
     }
 
     .log-success {
-        color: green;
+        color: $success;
     }
 
     .log-error {
-        color: red;
+        color: $error;
     }
 
     .log-info {

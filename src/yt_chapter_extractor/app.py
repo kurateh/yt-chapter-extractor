@@ -6,6 +6,7 @@ from .screens.chapter_select import ChapterSelectScreen
 from .screens.download import DownloadScreen
 from .screens.metadata_edit import MetadataEditScreen
 from .screens.url_input import UrlInputScreen
+from .theme import CATPPUCCIN_MACCHIATO
 
 
 class ChapterExtractorApp(App):
@@ -18,6 +19,9 @@ class ChapterExtractorApp(App):
     """
 
     def on_mount(self) -> None:
+        self.register_theme(CATPPUCCIN_MACCHIATO)
+        self.theme = "catppuccin-macchiato"
+
         if not check_ffmpeg():
             self.notify(
                 "ffmpeg is not installed. Please install it first.",
