@@ -4,7 +4,7 @@ from pathlib import Path
 
 import yt_dlp
 
-from .models import Chapter, VideoInfo
+from .models import Chapter, PlaylistEntry, PlaylistInfo, VideoInfo
 
 ProgressCallback = Callable[[float, str], None]
 
@@ -88,6 +88,49 @@ def download_audio(
         output_path = candidates[0]
 
     return output_path
+
+
+def is_playlist_url(url: str) -> bool:
+    return bool(
+        re.search(r"youtube\.com/playlist\?list=", url)
+        or re.search(r"youtube\.com/watch\?.*list=", url)
+    )
+
+
+def extract_playlist_info(url: str) -> PlaylistInfo:
+    ydl_opts = {
+        "quiet": True,
+        "no_warnings": True,
+        "extract_flat": "in_playlist",
+        "ignoreerrors": True,
+    }
+
+    with yt_dlp.YoutubeDL(ydl_opts) as ydl:
+        info = ydl.extract_info(url, download=False)
+
+    if info is None:
+        raise ValueError(f"Could not extract playlist info from: {url}")
+
+    raw_entries = info.get("entries") or []
+    entries = tuple(
+        PlaylistEntry(
+            video_id=entry["id"],
+            title=entry.get("title", "Unknown"),
+            duration=float(entry.get("duration") or 0.0),
+            index=i,
+        )
+        for i, entry in enumerate(raw_entries)
+        if entry is not None and entry.get("id")
+    )
+
+    if not entries:
+        raise ValueError("Playlist is empty or all videos are unavailable.")
+
+    return PlaylistInfo(
+        playlist_id=info.get("id", ""),
+        title=info.get("title", "Unknown Playlist"),
+        entries=entries,
+    )
 
 
 def sanitize_filename(name: str) -> str:

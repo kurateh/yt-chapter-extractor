@@ -2,6 +2,15 @@ from dataclasses import dataclass, field
 from pathlib import Path
 
 
+def format_duration(seconds: float) -> str:
+    total_seconds = int(seconds)
+    minutes, secs = divmod(total_seconds, 60)
+    hours, minutes = divmod(minutes, 60)
+    if hours > 0:
+        return f"{hours}:{minutes:02d}:{secs:02d}"
+    return f"{minutes}:{secs:02d}"
+
+
 @dataclass(frozen=True)
 class Chapter:
     index: int
@@ -15,12 +24,7 @@ class Chapter:
 
     @property
     def duration_str(self) -> str:
-        total_seconds = int(self.duration)
-        minutes, seconds = divmod(total_seconds, 60)
-        hours, minutes = divmod(minutes, 60)
-        if hours > 0:
-            return f"{hours}:{minutes:02d}:{seconds:02d}"
-        return f"{minutes}:{seconds:02d}"
+        return format_duration(self.duration)
 
 
 @dataclass(frozen=True)
@@ -65,6 +69,35 @@ class VideoInfo:
     title: str
     duration: float
     chapters: tuple[Chapter, ...] = field(default_factory=tuple)
+
+
+@dataclass(frozen=True)
+class PlaylistEntry:
+    video_id: str
+    title: str
+    duration: float
+    index: int
+
+    @property
+    def url(self) -> str:
+        return f"https://www.youtube.com/watch?v={self.video_id}"
+
+    @property
+    def duration_str(self) -> str:
+        return format_duration(self.duration)
+
+
+@dataclass(frozen=True)
+class PlaylistInfo:
+    playlist_id: str
+    title: str
+    entries: tuple[PlaylistEntry, ...]
+
+
+@dataclass(frozen=True)
+class DownloadTask:
+    url: str
+    tracks: tuple[TrackInfo, ...]
 
 
 @dataclass(frozen=True)

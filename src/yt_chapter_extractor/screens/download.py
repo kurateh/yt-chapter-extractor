@@ -9,7 +9,7 @@ from textual.screen import Screen
 from textual.widgets import Button, Footer, Header, Label, ProgressBar, Static
 
 from ..audio import normalize_audio, process_track
-from ..models import TrackInfo
+from ..models import DownloadTask
 from ..youtube import download_audio
 
 
@@ -66,23 +66,22 @@ class DownloadScreen(Screen[bool]):
 
     def __init__(
         self,
-        url: str,
-        tracks: list[TrackInfo],
+        tasks: tuple[DownloadTask, ...],
         target_lufs: float | None = None,
     ) -> None:
         super().__init__()
-        self._url = url
-        self._tracks = tracks
+        self._tasks = tasks
         self._target_lufs = target_lufs
+        self._total_tracks = sum(len(t.tracks) for t in tasks)
 
     def compose(self) -> ComposeResult:
         yield Header()
         with Vertical(id="progress-section"):
             yield Label(
-                f"Processing {len(self._tracks)} tracks...",
+                f"Processing {self._total_tracks} tracks...",
                 id="overall-label",
             )
-            yield ProgressBar(total=len(self._tracks), id="overall-progress")
+            yield ProgressBar(total=self._total_tracks, id="overall-progress")
             yield Label("Preparing...", id="current-label")
         with VerticalScroll(id="log-area"):
             yield Static("")
@@ -111,82 +110,99 @@ class DownloadScreen(Screen[bool]):
         output_dir = Path.cwd() / "output"
         output_dir.mkdir(exist_ok=True)
 
-        self.app.call_from_thread(self._log, "Downloading audio from YouTube...")
-        self.app.call_from_thread(
-            self._update_current, "Downloading audio..."
-        )
+        multi_task = len(self._tasks) > 1
+        track_num = 0
 
         try:
-            with tempfile.TemporaryDirectory() as tmp_dir:
-                last_update = 0.0
-
-                def on_progress(pct: float, speed: str) -> None:
-                    nonlocal last_update
-                    now = time.monotonic()
-                    if now - last_update < 0.5:
-                        return
-                    last_update = now
-                    msg = f"Downloading audio... {pct:.1f}%"
-                    if speed:
-                        msg += f" ({speed})"
-                    self.app.call_from_thread(self._update_current, msg)
-
-                source_path = download_audio(
-                    self._url, Path(tmp_dir), on_progress
-                )
-
+            for task_idx, task in enumerate(self._tasks):
                 if worker.is_cancelled:
                     return
 
+                if multi_task:
+                    self.app.call_from_thread(
+                        self._log,
+                        f"Downloading video {task_idx + 1}/{len(self._tasks)}...",
+                    )
+                else:
+                    self.app.call_from_thread(
+                        self._log, "Downloading audio from YouTube..."
+                    )
+
                 self.app.call_from_thread(
-                    self._log, "Download complete.", "log-success"
+                    self._update_current, "Downloading audio..."
                 )
 
-                for i, track in enumerate(self._tracks):
+                with tempfile.TemporaryDirectory() as tmp_dir:
+                    last_update = 0.0
+
+                    def on_progress(pct: float, speed: str) -> None:
+                        nonlocal last_update
+                        now = time.monotonic()
+                        if now - last_update < 0.5:
+                            return
+                        last_update = now
+                        msg = f"Downloading audio... {pct:.1f}%"
+                        if speed:
+                            msg += f" ({speed})"
+                        self.app.call_from_thread(self._update_current, msg)
+
+                    source_path = download_audio(
+                        task.url, Path(tmp_dir), on_progress
+                    )
+
                     if worker.is_cancelled:
                         return
 
                     self.app.call_from_thread(
-                        self._update_current,
-                        f"Extracting: {track.filename} ({i + 1}/{len(self._tracks)})",
-                    )
-                    self.app.call_from_thread(
-                        self._log, f"Processing: {track.filename}..."
+                        self._log, "Download complete.", "log-success"
                     )
 
-                    try:
-                        result_path = process_track(
-                            source_path, track, output_dir
+                    for i, track in enumerate(task.tracks):
+                        if worker.is_cancelled:
+                            return
+
+                        track_num += 1
+                        self.app.call_from_thread(
+                            self._update_current,
+                            f"Extracting: {track.filename} ({track_num}/{self._total_tracks})",
                         )
                         self.app.call_from_thread(
-                            self._log,
-                            f"  Saved: {result_path.name}",
-                            "log-success",
+                            self._log, f"Processing: {track.filename}..."
                         )
 
-                        if self._target_lufs is not None:
-                            self.app.call_from_thread(
-                                self._update_current,
-                                f"Normalizing: {track.filename} ({i + 1}/{len(self._tracks)})",
+                        try:
+                            result_path = process_track(
+                                source_path, track, output_dir
                             )
                             self.app.call_from_thread(
                                 self._log,
-                                f"  Normalizing to {self._target_lufs:.1f} LUFS...",
-                            )
-                            normalize_audio(result_path, self._target_lufs)
-                            self.app.call_from_thread(
-                                self._log,
-                                f"  Normalized: {result_path.name}",
+                                f"  Saved: {result_path.name}",
                                 "log-success",
                             )
-                    except Exception as e:
-                        self.app.call_from_thread(
-                            self._log,
-                            f"  Error: {track.filename} - {e}",
-                            "log-error",
-                        )
 
-                    self.app.call_from_thread(self._advance_progress)
+                            if self._target_lufs is not None:
+                                self.app.call_from_thread(
+                                    self._update_current,
+                                    f"Normalizing: {track.filename} ({track_num}/{self._total_tracks})",
+                                )
+                                self.app.call_from_thread(
+                                    self._log,
+                                    f"  Normalizing to {self._target_lufs:.1f} LUFS...",
+                                )
+                                normalize_audio(result_path, self._target_lufs)
+                                self.app.call_from_thread(
+                                    self._log,
+                                    f"  Normalized: {result_path.name}",
+                                    "log-success",
+                                )
+                        except Exception as e:
+                            self.app.call_from_thread(
+                                self._log,
+                                f"  Error: {track.filename} - {e}",
+                                "log-error",
+                            )
+
+                        self.app.call_from_thread(self._advance_progress)
 
         except Exception as e:
             self.app.call_from_thread(

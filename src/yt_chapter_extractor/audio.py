@@ -22,17 +22,29 @@ def extract_chapter_audio(
     end_time: float,
     output_path: Path,
 ) -> Path:
-    duration = end_time - start_time
-    cmd = [
-        "ffmpeg",
-        "-y",
-        "-ss", str(start_time),
-        "-i", str(source_path),
-        "-t", str(duration),
-        "-codec:a", "libmp3lame",
-        "-q:a", "2",
-        str(output_path),
-    ]
+    convert_entire_file = start_time == 0 and end_time <= 0
+
+    if convert_entire_file:
+        cmd = [
+            "ffmpeg",
+            "-y",
+            "-i", str(source_path),
+            "-codec:a", "libmp3lame",
+            "-q:a", "2",
+            str(output_path),
+        ]
+    else:
+        duration = end_time - start_time
+        cmd = [
+            "ffmpeg",
+            "-y",
+            "-ss", str(start_time),
+            "-i", str(source_path),
+            "-t", str(duration),
+            "-codec:a", "libmp3lame",
+            "-q:a", "2",
+            str(output_path),
+        ]
 
     result = subprocess.run(
         cmd,

@@ -6,15 +6,16 @@ from textual.containers import Center, Vertical
 from textual.screen import Screen
 from textual.widgets import Button, Footer, Header, Input, Label, LoadingIndicator
 
-from ..models import VideoInfo
-from ..youtube import extract_video_info
+from ..models import PlaylistInfo, VideoInfo
+from ..youtube import extract_playlist_info, extract_video_info, is_playlist_url
 
 _YOUTUBE_URL_PATTERN = re.compile(
-    r"^(https?://)?(www\.)?(youtube\.com/watch\?v=|youtu\.be/)[\w-]+"
+    r"^(https?://)?(www\.)?"
+    r"(youtube\.com/(watch\?[\w&=-]+|playlist\?[\w&=-]+)|youtu\.be/[\w-]+)"
 )
 
 
-class UrlInputScreen(Screen[VideoInfo | None]):
+class UrlInputScreen(Screen[VideoInfo | PlaylistInfo | None]):
     CSS = """
     #container {
         align: center middle;
@@ -60,10 +61,10 @@ class UrlInputScreen(Screen[VideoInfo | None]):
             with Vertical(id="container"):
                 yield Label("YouTube Chapter Extractor", id="title")
                 yield Input(
-                    placeholder="Enter YouTube video URL...",
+                    placeholder="Enter YouTube video or playlist URL...",
                     id="url-input",
                 )
-                yield Button("Load Video", id="load-btn", variant="primary")
+                yield Button("Load", id="load-btn", variant="primary")
                 yield LoadingIndicator(id="loading")
                 yield Label("", id="error-label")
         yield Footer()
@@ -99,9 +100,12 @@ class UrlInputScreen(Screen[VideoInfo | None]):
         self.app.call_from_thread(self._set_loading, True)
 
         try:
-            video_info = extract_video_info(url)
+            if is_playlist_url(url):
+                result = extract_playlist_info(url)
+            else:
+                result = extract_video_info(url)
             if not worker.is_cancelled:
-                self.app.call_from_thread(self.dismiss, video_info)
+                self.app.call_from_thread(self.dismiss, result)
         except Exception as e:
             if not worker.is_cancelled:
                 self.app.call_from_thread(self._show_error, str(e))

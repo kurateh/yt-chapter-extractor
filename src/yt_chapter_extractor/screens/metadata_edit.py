@@ -74,9 +74,12 @@ class MetadataEditScreen(Screen[list[TrackInfo]]):
         ("escape", "go_back", "Back"),
     ]
 
-    def __init__(self, chapters: list[Chapter]) -> None:
+    def __init__(
+        self, chapters: list[Chapter], default_album: str = ""
+    ) -> None:
         super().__init__()
         self._chapters = chapters
+        self._default_album = default_album
 
     def compose(self) -> ComposeResult:
         yield Header()
@@ -125,6 +128,7 @@ class MetadataEditScreen(Screen[list[TrackInfo]]):
                     with Horizontal(classes="field-row"):
                         yield Label("Album", classes="field-label")
                         yield Input(
+                            value=self._default_album,
                             placeholder="Album name",
                             id=f"album-{chapter.index}",
                             classes="field-input",

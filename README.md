@@ -7,6 +7,9 @@ A terminal UI application for audio processing, built with [Textual](https://tex
 ### YouTube Chapter Extraction
 Extract individual chapters from a YouTube video as separate MP3 files with ID3 metadata (title, artist, album). Videos without chapters are downloaded as a single track.
 
+### YouTube Playlist Download
+Download videos from a YouTube playlist as individual MP3 files. Select which videos to include, edit metadata (playlist title is pre-filled as album), and optionally normalize loudness.
+
 ### Audio Loudness Normalization
 Normalize the loudness of MP3 files in a directory to a target LUFS value using ffmpeg's EBU R128 `loudnorm` filter. Displays current loudness measurements with average and median statistics before processing.
 
@@ -36,7 +39,7 @@ uv run yt-chapter-extractor
 
 On launch, select a mode:
 
-- **YouTube MP3 Extraction** - Enter a YouTube URL. If the video has chapters, select which ones to extract; otherwise, the full video is treated as a single track. Edit metadata, optionally enable loudness normalization (target LUFS), and download as MP3 files (saved to `./output/`).
+- **YouTube MP3 Extraction** - Enter a YouTube video or playlist URL. Single videos with chapters let you select which ones to extract; videos without chapters are treated as a single track; playlists let you pick videos to download as individual MP3s. Edit metadata, optionally enable loudness normalization (target LUFS), and download (saved to `./output/`).
 - **Audio Decibel Normalization** - Enter a directory path, review loudness levels, set a target LUFS (default: -19.0), and normalize all MP3 files in-place.
 
 ## Tech Stack
