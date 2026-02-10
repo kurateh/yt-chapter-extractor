@@ -2,6 +2,7 @@ from textual import work
 from textual.app import App
 
 from .audio import check_ffmpeg
+from .models import Chapter
 from .screens.chapter_select import ChapterSelectScreen
 from .screens.dir_input import DirInputScreen
 from .screens.download import DownloadScreen
@@ -56,22 +57,45 @@ class ChapterExtractorApp(App):
             if video_info is None:
                 return
 
-            while True:
-                selected_chapters = await self.push_screen_wait(
-                    ChapterSelectScreen(video_info.title, video_info.chapters)
-                )
-                if not selected_chapters:
-                    break
+            if video_info.chapters:
+                await self._run_chapter_flow(video_info)
+            else:
+                await self._run_single_track_flow(video_info)
+            return
 
-                tracks = await self.push_screen_wait(
-                    MetadataEditScreen(selected_chapters)
-                )
-                if not tracks:
-                    continue
-
-                url = f"https://www.youtube.com/watch?v={video_info.video_id}"
-                await self.push_screen_wait(DownloadScreen(url, tracks))
+    async def _run_chapter_flow(self, video_info) -> None:
+        while True:
+            selected_chapters = await self.push_screen_wait(
+                ChapterSelectScreen(video_info.title, video_info.chapters)
+            )
+            if not selected_chapters:
                 return
+
+            tracks = await self.push_screen_wait(
+                MetadataEditScreen(selected_chapters)
+            )
+            if not tracks:
+                continue
+
+            url = f"https://www.youtube.com/watch?v={video_info.video_id}"
+            await self.push_screen_wait(DownloadScreen(url, tracks))
+            return
+
+    async def _run_single_track_flow(self, video_info) -> None:
+        full_chapter = Chapter(
+            index=0,
+            title=video_info.title,
+            start_time=0.0,
+            end_time=video_info.duration,
+        )
+        tracks = await self.push_screen_wait(
+            MetadataEditScreen((full_chapter,))
+        )
+        if not tracks:
+            return
+
+        url = f"https://www.youtube.com/watch?v={video_info.video_id}"
+        await self.push_screen_wait(DownloadScreen(url, tracks))
 
     async def _run_normalize_flow(self) -> None:
         while True:

@@ -22,8 +22,6 @@ def extract_video_info(url: str) -> VideoInfo:
         raise ValueError(f"Could not extract info from: {url}")
 
     raw_chapters = info.get("chapters") or []
-    if not raw_chapters:
-        raise ValueError("This video has no chapters.")
 
     chapters = tuple(
         Chapter(

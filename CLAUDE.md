@@ -26,16 +26,18 @@ The app uses a mode-branching screen flow orchestrated by `app.py:_run_flow()` v
 
 ```
 ModeSelectScreen -> (branch)
-  "youtube"   -> UrlInputScreen -> ChapterSelectScreen -> MetadataEditScreen -> DownloadScreen
+  "youtube"   -> UrlInputScreen -> (branch on chapters)
+      has chapters -> ChapterSelectScreen -> MetadataEditScreen -> DownloadScreen
+      no chapters  -> MetadataEditScreen -> DownloadScreen (single track)
   "normalize" -> DirInputScreen -> NormFileListScreen -> NormProgressScreen
 ```
 
-Back navigation: each screen dismisses with `None` to go back. After completing either flow, the user returns to mode selection.
+Back navigation: each screen dismisses with `None` to go back. After completing either flow, the user returns to mode selection. Videos without chapters are treated as a single track spanning the full duration.
 
 ### Layer separation
 
 - **models.py** - Immutable frozen dataclasses (`Chapter`, `TrackInfo`, `VideoInfo`, `Mp3FileInfo`). All use `frozen=True` with copy-on-write methods (`with_filename`, `with_metadata`, `with_loudness`).
-- **youtube.py** - yt-dlp wrapper. `extract_video_info()` fetches chapters; `download_audio()` downloads full audio in native format with progress callback.
+- **youtube.py** - yt-dlp wrapper. `extract_video_info()` fetches video metadata and chapters (returns empty tuple if none); `download_audio()` downloads full audio in native format with progress callback.
 - **audio.py** - ffmpeg operations: chapter extraction, MP3 conversion, ID3 tags (mutagen), loudness measurement (`measure_loudness`), and normalization (`normalize_audio`). Normalization writes to a temp file then does atomic `os.replace()`.
 - **screens/** - Textual Screen subclasses, each dismissing with a typed result that the next screen consumes.
 - **theme.py** - Catppuccin Macchiato theme definition.
