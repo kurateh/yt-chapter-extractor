@@ -1,0 +1,17 @@
+[project]
+name = "yt-chapter-extractor"
+version = "0.1.0"
+description = "Extract individual songs from YouTube video chapters as MP3"
+requires-python = ">=3.11"
+dependencies = [
+    "textual>=1.0.0",
+    "yt-dlp>=2024.0.0",
+    "mutagen>=1.47.0",
+]
+
+[project.scripts]
+yt-chapter-extractor = "yt_chapter_extractor.__main__:main"
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
