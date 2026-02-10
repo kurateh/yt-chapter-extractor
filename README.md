@@ -1,4 +1,4 @@
-# Audio Tools
+# Youtube Chapter Extractor
 
 A terminal UI application for audio processing, built with [Textual](https://textual.textualize.io/).
 
