@@ -29,8 +29,8 @@ Back navigation: MetadataEdit goes back to ChapterSelect; ChapterSelect goes bac
 ### Layer separation
 
 - **models.py** - Immutable frozen dataclasses (`Chapter`, `TrackInfo`, `VideoInfo`). All use `frozen=True` with copy-on-write methods (`with_filename`, `with_metadata`).
-- **youtube.py** - yt-dlp wrapper. `extract_video_info()` fetches chapters without downloading; `download_audio()` downloads full audio as MP3 to a temp dir.
-- **audio.py** - ffmpeg subprocess for chapter extraction + mutagen for ID3 tags. `process_track()` combines both steps.
+- **youtube.py** - yt-dlp wrapper. `extract_video_info()` fetches chapters; `download_audio()` downloads full audio in native format (no MP3 conversion) with progress callback.
+- **audio.py** - ffmpeg extracts chapters from local file (`-ss` before `-i` for fast seeking) + converts to MP3 + mutagen for ID3 tags.
 - **screens/** - Four Textual Screen subclasses, each dismissing with a typed result that the next screen consumes.
 
 ### Textual patterns used

@@ -1,9 +1,12 @@
 import re
+from collections.abc import Callable
 from pathlib import Path
 
 import yt_dlp
 
 from .models import Chapter, VideoInfo
+
+ProgressCallback = Callable[[float, str], None]
 
 
 def extract_video_info(url: str) -> VideoInfo:
@@ -40,22 +43,35 @@ def extract_video_info(url: str) -> VideoInfo:
     )
 
 
-def download_audio(url: str, output_dir: Path) -> Path:
+def download_audio(
+    url: str,
+    output_dir: Path,
+    on_progress: ProgressCallback | None = None,
+) -> Path:
     output_template = str(output_dir / "%(id)s.%(ext)s")
 
-    ydl_opts = {
+    ydl_opts: dict = {
         "format": "bestaudio/best",
         "outtmpl": output_template,
         "quiet": True,
         "no_warnings": True,
-        "postprocessors": [
-            {
-                "key": "FFmpegExtractAudio",
-                "preferredcodec": "mp3",
-                "preferredquality": "192",
-            }
-        ],
     }
+
+    if on_progress:
+
+        def hook(d: dict) -> None:
+            if d["status"] == "downloading":
+                total = (
+                    d.get("total_bytes")
+                    or d.get("total_bytes_estimate")
+                    or 0
+                )
+                downloaded = d.get("downloaded_bytes", 0)
+                pct = (downloaded / total * 100) if total > 0 else 0
+                speed = d.get("_speed_str", "").strip()
+                on_progress(pct, speed)
+
+        ydl_opts["progress_hooks"] = [hook]
 
     with yt_dlp.YoutubeDL(ydl_opts) as ydl:
         info = ydl.extract_info(url, download=True)
@@ -64,10 +80,14 @@ def download_audio(url: str, output_dir: Path) -> Path:
         raise ValueError(f"Failed to download audio from: {url}")
 
     video_id = info.get("id", "unknown")
-    output_path = output_dir / f"{video_id}.mp3"
+    ext = info.get("ext", "webm")
+    output_path = output_dir / f"{video_id}.{ext}"
 
     if not output_path.exists():
-        raise FileNotFoundError(f"Downloaded file not found: {output_path}")
+        candidates = list(output_dir.glob(f"{video_id}.*"))
+        if not candidates:
+            raise FileNotFoundError(f"Downloaded file not found: {output_path}")
+        output_path = candidates[0]
 
     return output_path
 

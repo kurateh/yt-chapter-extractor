@@ -1,4 +1,5 @@
 import tempfile
+import time
 from pathlib import Path
 
 from textual import work
@@ -106,13 +107,30 @@ class DownloadScreen(Screen[bool]):
 
         self.app.call_from_thread(self._log, "Downloading audio from YouTube...")
         self.app.call_from_thread(
-            self._update_current, "Downloading full audio..."
+            self._update_current, "Downloading audio..."
         )
 
         try:
             with tempfile.TemporaryDirectory() as tmp_dir:
-                tmp_path = Path(tmp_dir)
-                source_path = download_audio(self._url, tmp_path)
+                last_update = 0.0
+
+                def on_progress(pct: float, speed: str) -> None:
+                    nonlocal last_update
+                    now = time.monotonic()
+                    if now - last_update < 0.5:
+                        return
+                    last_update = now
+                    msg = f"Downloading audio... {pct:.1f}%"
+                    if speed:
+                        msg += f" ({speed})"
+                    self.app.call_from_thread(self._update_current, msg)
+
+                source_path = download_audio(
+                    self._url, Path(tmp_dir), on_progress
+                )
+
+                if worker.is_cancelled:
+                    return
 
                 self.app.call_from_thread(
                     self._log, "Download complete.", "log-success"
