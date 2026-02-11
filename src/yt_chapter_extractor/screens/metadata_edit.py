@@ -101,25 +101,24 @@ class MetadataEditScreen(Screen[list[TrackInfo]]):
 
         with VerticalScroll(id="edit-area"):
             for chapter in self._chapters:
-                default_name = sanitize_filename(chapter.title)
                 with Vertical(classes="track-row", id=f"track-{chapter.index}"):
                     yield Static(
                         f"Chapter {chapter.index + 1}: {chapter.title}",
                         classes="track-title",
                     )
                     with Horizontal(classes="field-row"):
-                        yield Label("Filename *", classes="field-label")
+                        yield Label("Title *", classes="field-label")
                         yield Input(
-                            value=default_name,
-                            placeholder="Filename (required)",
-                            id=f"filename-{chapter.index}",
+                            value=chapter.title,
+                            placeholder="Song title (required)",
+                            id=f"title-{chapter.index}",
                             classes="field-input",
                         )
                     with Horizontal(classes="field-row"):
-                        yield Label("Title", classes="field-label")
+                        yield Label("Filename", classes="field-label")
                         yield Input(
-                            placeholder="Song title (defaults to filename)",
-                            id=f"title-{chapter.index}",
+                            placeholder="Auto: (Album) (Title).mp3",
+                            id=f"filename-{chapter.index}",
                             classes="field-input",
                         )
                     with Horizontal(classes="field-row"):
@@ -225,19 +224,19 @@ class MetadataEditScreen(Screen[list[TrackInfo]]):
         tracks: list[TrackInfo] = []
 
         for chapter in self._chapters:
-            filename = self.query_one(
-                f"#filename-{chapter.index}", Input
+            title = self.query_one(
+                f"#title-{chapter.index}", Input
             ).value.strip()
 
-            if not filename:
+            if not title:
                 self.notify(
-                    f"Filename is required for chapter: {chapter.title}",
+                    f"Title is required for chapter: {chapter.title}",
                     severity="error",
                 )
                 return
 
-            title = self.query_one(
-                f"#title-{chapter.index}", Input
+            filename = self.query_one(
+                f"#filename-{chapter.index}", Input
             ).value.strip()
             artist = self.query_one(
                 f"#artist-{chapter.index}", Input
@@ -245,6 +244,9 @@ class MetadataEditScreen(Screen[list[TrackInfo]]):
             album = self.query_one(
                 f"#album-{chapter.index}", Input
             ).value.strip()
+
+            if not filename:
+                filename = f"{album} {title}".strip() if album else title
 
             tracks.append(
                 TrackInfo(
