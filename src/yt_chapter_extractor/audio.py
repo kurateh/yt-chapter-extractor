@@ -6,7 +6,7 @@ import subprocess
 import tempfile
 from pathlib import Path
 
-from mutagen.id3 import ID3, TIT2, TPE1, TALB
+from mutagen.id3 import ID3, TIT2, TPE1, TALB, TRCK
 from mutagen.mp3 import MP3
 
 from .models import TrackInfo
@@ -76,6 +76,11 @@ def set_metadata(mp3_path: Path, track: TrackInfo) -> None:
 
     if track.album:
         tags.add(TALB(encoding=3, text=[track.album]))
+
+    if track.total_tracks:
+        tags.add(TRCK(encoding=3, text=[f"{track.track_number}/{track.total_tracks}"]))
+    else:
+        tags.add(TRCK(encoding=3, text=[str(track.track_number)]))
 
     audio.save()
 

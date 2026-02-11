@@ -34,6 +34,11 @@ class TrackInfo:
     title: str = ""
     artist: str = ""
     album: str = ""
+    total_tracks: int = 0
+
+    @property
+    def track_number(self) -> int:
+        return self.chapter.index + 1
 
     @property
     def effective_title(self) -> str:
@@ -46,6 +51,7 @@ class TrackInfo:
             title=self.title,
             artist=self.artist,
             album=self.album,
+            total_tracks=self.total_tracks,
         )
 
     def with_metadata(
@@ -60,6 +66,7 @@ class TrackInfo:
             title=title,
             artist=artist,
             album=album,
+            total_tracks=self.total_tracks,
         )
 
 

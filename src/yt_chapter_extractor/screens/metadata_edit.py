@@ -75,11 +75,15 @@ class MetadataEditScreen(Screen[list[TrackInfo]]):
     ]
 
     def __init__(
-        self, chapters: list[Chapter], default_album: str = ""
+        self,
+        chapters: list[Chapter],
+        default_album: str = "",
+        total_tracks: int = 0,
     ) -> None:
         super().__init__()
         self._chapters = chapters
         self._default_album = default_album
+        self._total_tracks = total_tracks
 
     def compose(self) -> ComposeResult:
         yield Header()
@@ -249,6 +253,7 @@ class MetadataEditScreen(Screen[list[TrackInfo]]):
                     title=title,
                     artist=artist,
                     album=album,
+                    total_tracks=self._total_tracks,
                 )
             )
 

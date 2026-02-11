@@ -86,7 +86,11 @@ class ChapterExtractorApp(App):
             ]
 
             tracks = await self.push_screen_wait(
-                MetadataEditScreen(chapters, default_album=playlist_info.title)
+                MetadataEditScreen(
+                    chapters,
+                    default_album=playlist_info.title,
+                    total_tracks=len(playlist_info.entries),
+                )
             )
             if not tracks:
                 continue
@@ -121,7 +125,10 @@ class ChapterExtractorApp(App):
                 return
 
             tracks = await self.push_screen_wait(
-                MetadataEditScreen(selected_chapters)
+                MetadataEditScreen(
+                    selected_chapters,
+                    total_tracks=len(video_info.chapters),
+                )
             )
             if not tracks:
                 continue
